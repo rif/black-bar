@@ -12,6 +12,8 @@ import (
 	"image/jpeg"
 	_ "image/png" // import so we can read PNG files.
 	"io"
+	"image/color"
+	"image/draw"
 	"net/http"
 	"strconv"
 	"text/template"
@@ -136,14 +138,32 @@ func img(w http.ResponseWriter, r *http.Request) {
 		i, _ := strconv.Atoi(r.FormValue(n))
 		return i
 	}
-	x, y, s, d := get("x"), get("y"), get("s"), get("d")
-
+	x, y, s := get("x"), get("y"), get("s")
+	dp := image.Pt(x,y)
+	sr := image.Rect(0, 0, (s+1)*50, (s+1)*10)
+	bbar := image.NewRGBA(sr)
+	draw.Draw(bbar, bbar.Bounds(), image.NewUniform(color.Black), image.ZP, draw.Src)
+	dst := rgba(m)
+	dst.Set(x, y, color.Black)
 	if x > 0 { // only draw if coordinates provided
-		m = moustache(m, x, y, s, d)
+		r := image.Rectangle{dp.Sub(sr.Size().Div(2)), dp.Add(sr.Size().Div(2))}
+		draw.Draw(dst, r, bbar, image.ZP, draw.Src)
 	}
 
 	w.Header().Set("Content-type", "image/jpeg")
-	jpeg.Encode(w, m, nil)
+	jpeg.Encode(w, dst, nil)
+}
+
+// rgba returns an RGBA version of the image, making a copy only if
+// necessary.
+func rgba(m image.Image) *image.RGBA {
+	if r, ok := m.(*image.RGBA); ok {
+		return r
+	}
+	b := m.Bounds()
+	r := image.NewRGBA(b)
+	draw.Draw(r, b, m, image.ZP, draw.Src)
+	return r
 }
 
 // errorHandler wraps the argument handler with an error-catcher that
