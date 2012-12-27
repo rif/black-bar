@@ -7,6 +7,7 @@ package moustachio
 
 import (
 	"bytes"
+	"log"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -139,6 +140,16 @@ func img(w http.ResponseWriter, r *http.Request) {
 		return i
 	}
 	x, y, s := get("x"), get("y"), get("s")
+	dst := blackbar(m, x,y,s)
+	if r.FormValue("n") != "" { // save the current blackbar to store
+		_, err = datastore.Put(c, key, dst)
+		check(err)
+	}
+	w.Header().Set("Content-type", "image/jpeg")
+	jpeg.Encode(w, dst, nil)
+}
+
+func blackbar(m image.Image, x,y,s int) image.Image {
 	dp := image.Pt(x,y)
 	sr := image.Rect(0, 0, (s+1)*50, (s+1)*10)
 	bbar := image.NewRGBA(sr)
@@ -149,9 +160,7 @@ func img(w http.ResponseWriter, r *http.Request) {
 		r := image.Rectangle{dp.Sub(sr.Size().Div(2)), dp.Add(sr.Size().Div(2))}
 		draw.Draw(dst, r, bbar, image.ZP, draw.Src)
 	}
-
-	w.Header().Set("Content-type", "image/jpeg")
-	jpeg.Encode(w, dst, nil)
+	return dst
 }
 
 // rgba returns an RGBA version of the image, making a copy only if
@@ -183,6 +192,7 @@ func errorHandler(fn http.HandlerFunc) http.HandlerFunc {
 // check aborts the current execution if err is non-nil.
 func check(err error) {
 	if err != nil {
+		log.Print("Error: ", err)
 		panic(err)
 	}
 }

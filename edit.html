@@ -12,21 +12,23 @@
 	$(document).ready(function() {
 		var id = "{{.|js}}";
 		var $pic = $("#pic");
-		var $url = $("#url");
-		var $share = $("#share");
+		var $save = $("#save");
 		var x = 0;
 		var y = 0;
 		function update() {
 			var query = "id="+id+"&x="+x+"&y="+y+
 				"&s="+$("#size").val();
 			$pic.attr("src", "/img?"+query);
-			$url.text("/img?"+query);
-			$share.attr("href", "/share?"+query);
+			$save.attr("href", "/img?"+query + "&n=1");
 		}
 		$pic.click(function(e) {
 			x = e.pageX - this.offsetLeft;
 			y = e.pageY - this.offsetTop;
 			update();
+		});
+		$("#save").click(function(){
+			$.get($(this).attr("href"), update);
+			return false;
 		});
 		$("#size").bind("mouseup", update);
 		update();
@@ -36,6 +38,9 @@
 <body>
 	Size: <input id="size" type="range" min="0" max="10" step="1" value="5">
 	<p>Click the image to place the blackbar.</p>
+	<div>
+		<a id="save" href="#">New blackbar</a>
+	</div>
 	<img id="pic">
 </body>
 </html>
