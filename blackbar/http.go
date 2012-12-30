@@ -1,20 +1,15 @@
-// Copyright 2011 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
-// On App Engine, the framework sets up main; we should be a different package.
-package moustachio
+package blackbar
 
 import (
 	"bytes"
-	"log"
 	"fmt"
 	"image"
+	"image/color"
+	"image/draw"
 	"image/jpeg"
 	_ "image/png" // import so we can read PNG files.
 	"io"
-	"image/color"
-	"image/draw"
+	"log"
 	"net/http"
 	"strconv"
 	"text/template"
@@ -27,7 +22,6 @@ import (
 	"crypto/sha1"
 	"resize"
 )
-
 
 var (
 	templates = template.Must(template.ParseFiles(
@@ -68,7 +62,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 	i, _, err := image.Decode(&buf)
 	check(err)
 
-	// Resize if too large, for more efficient moustachioing.
+	// Resize if too large, for more efficient blackbarring.
 	// We aim for less than 1200 pixels in any dimension; if the
 	// picture is larger than that, we squeeze it down to 600.
 	const max = 1200
@@ -123,7 +117,7 @@ func edit(w http.ResponseWriter, r *http.Request) {
 	templates.ExecuteTemplate(w, "edit.html", r.FormValue("id"))
 }
 
-// img is the HTTP handler for displaying images and painting moustaches;
+// img is the HTTP handler for displaying images and painting blackbars;
 // it handles "/img".
 func img(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
@@ -140,17 +134,19 @@ func img(w http.ResponseWriter, r *http.Request) {
 		return i
 	}
 	x, y, s := get("x"), get("y"), get("s")
-	dst := blackbar(m, x,y,s)
+	dst := blackbar(m, x, y, s)
+	var buf bytes.Buffer
+	jpeg.Encode(&buf, dst, nil)
 	if r.FormValue("n") != "" { // save the current blackbar to store
-		_, err = datastore.Put(c, key, dst)
+		_, err = datastore.Put(c, key, &Image{buf.Bytes()})
 		check(err)
 	}
 	w.Header().Set("Content-type", "image/jpeg")
-	jpeg.Encode(w, dst, nil)
+	io.Copy(w, &buf)
 }
 
-func blackbar(m image.Image, x,y,s int) image.Image {
-	dp := image.Pt(x,y)
+func blackbar(m image.Image, x, y, s int) image.Image {
+	dp := image.Pt(x, y)
 	sr := image.Rect(0, 0, (s+1)*50, (s+1)*10)
 	bbar := image.NewRGBA(sr)
 	draw.Draw(bbar, bbar.Bounds(), image.NewUniform(color.Black), image.ZP, draw.Src)
